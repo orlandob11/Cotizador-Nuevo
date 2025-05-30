@@ -1722,7 +1722,192 @@ export default function CotizadorCombinadoMejorado({
             <DialogHeader>
               <DialogTitle>Editar Ítem</DialogTitle>
             </DialogHeader>
-            {/* Aquí iría el contenido del diálogo de edición */}
+              {/* Aquí iría el contenido del diálogo de edición */}
+              <div className="space-y-6">
+                {/* Descripción */}
+                <div className="space-y-2">
+                  <Label htmlFor="descripcion" className="text-sm font-medium">
+                    Descripción del Ítem
+                  </Label>
+                  <Input
+                    id="descripcion"
+                    value={itemEditando.descripcion}
+                    onChange={(e) => setItemEditando((prev) => ({ ...prev, descripcion: e.target.value }))}
+                    placeholder="Ej: Banner publicitario, Letrero acrílico..."
+                    className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                {/* Cantidad */}
+                <div className="space-y-2">
+                  <Label htmlFor="cantidad" className="text-sm font-medium">
+                    Cantidad
+                  </Label>
+                  <Input
+                    id="cantidad"
+                    type="number"
+                    value={itemEditando.cantidad}
+                    onChange={(e) => setItemEditando((prev) => ({ ...prev, cantidad: Number(e.target.value) }))}
+                    min={1}
+                    placeholder="1"
+                    className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                
+                {/* Precio Unitario */}
+                <div className="space-y-2">
+                  <Label htmlFor="precioUnitario" className="text-sm font-medium">
+                    Precio Unitario
+                  </Label>
+                  <Input
+                    id="precioUnitario"
+                    value={itemEditando.precioUnitario.valor || ""}
+                    onChange={(e) =>
+                      setItemEditando((prev) => ({
+                        ...prev,
+                        precioUnitario: { ...prev.precioUnitario, valor: Number(e.target.value) }
+                      }))
+                    }
+                    placeholder="Ingrese el precio unitario"
+                    className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                {/* Categoría */}
+                <div className="space-y-2">
+                  <Label htmlFor="categoria" className="text-sm font-medium">
+                    Categoría
+                  </Label>
+                  <Select
+                    value={itemEditando.categoria}
+                    onValueChange={(value) => setItemEditando((prev) => ({ ...prev, categoria: value }))}
+                  >
+                    <SelectTrigger id="categoria" className="border-gray-200 focus:border-blue-500 focus:ring-blue-500">
+                      <SelectValue placeholder="Seleccione una categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="impresion">Impresión</SelectItem>
+                      <SelectItem value="materiales">Materiales</SelectItem>
+                      <SelectItem value="mano_obra">Mano de Obra</SelectItem>
+                      <SelectItem value="transporte">Transporte</SelectItem>
+                      <SelectItem value="servicios">Servicios</SelectItem>
+                      <SelectItem value="otros">Otros</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Costo Real */}
+                <div className="space-y-2">
+                  <Label htmlFor="costoReal" className="text-sm font-medium">
+                    Costo Real
+                  </Label>
+                  <Input
+                    id="costoReal"
+                    type="number"
+                    value={itemEditando.costoReal || ""}
+                    onChange={(e) =>
+                      setItemEditando((prev) => ({
+                        ...prev,
+                        costoReal: e.target.value === "" ? null : Number(e.target.value),
+                      }))
+                    }
+                    placeholder="Ingrese el costo real"
+                    className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Mostrar Campos Extendidos Solo para Impresión */}
+                {itemEditando.esImpresion && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="ancho" className="text-sm font-medium">
+                        Ancho
+                      </Label>
+                      <Input
+                        id="ancho"
+                        type="number"
+                        value={itemEditando.extendido?.ancho || ""}
+                        onChange={(e) =>
+                          setItemEditando((prev) => ({
+                            ...prev,
+                            extendido: { ...prev.extendido, ancho: e.target.value === "" ? null : Number(e.target.value) },
+                          }))
+                        }
+                        placeholder="Ancho en la unidad seleccionada"
+                        className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="alto" className="text-sm font-medium">
+                        Alto
+                      </Label>
+                      <Input
+                        id="alto"
+                        type="number"
+                        value={itemEditando.extendido?.alto || ""}
+                        onChange={(e) =>
+                          setItemEditando((prev) => ({
+                            ...prev,
+                            extendido: { ...prev.extendido, alto: e.target.value === "" ? null : Number(e.target.value) },
+                          }))
+                        }
+                        placeholder="Alto en la unidad seleccionada"
+                        className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="costoPorPie" className="text-sm font-medium">
+                        {itemEditando.modoPrecio === "total" ? "Precio Total de Venta" : "Precio por Pie²"}
+                      </Label>
+                      <Input
+                        id="costoPorPie"
+                        type="number"
+                        value={itemEditando.extendido?.costoPorPie || ""}
+                        onChange={(e) =>
+                          setItemEditando((prev) => ({
+                            ...prev,
+                            extendido: { ...prev.extendido, costoPorPie: e.target.value === "" ? null : Number(e.target.value) },
+                          }))
+                        }
+                        placeholder={
+                          itemEditando.modoPrecio === "total" ? "Precio total de venta" : "Costo por pie cuadrado"
+                        }
+                        className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="unidadMedida" className="text-sm font-medium">
+                        Unidad de Medida
+                      </Label>
+                      <Select
+                        value={itemEditando.extendido?.unidadMedida || "pies"}
+                        onValueChange={(value) =>
+                          setItemEditando((prev) => ({
+                            ...prev,
+                            extendido: { ...prev.extendido, unidadMedida: value },
+                          }))
+                        }
+                      >
+                        <SelectTrigger id="unidadMedida" className="border-gray-200 focus:border-blue-500 focus:ring-blue-500">
+                          <SelectValue placeholder="Seleccione una unidad" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pies">Pies</SelectItem>
+                          <SelectItem value="pulgadas">Pulgadas</SelectItem>
+                          <SelectItem value="metros">Metros</SelectItem>
+                          <SelectItem value="centimetros">Centímetros</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
             <DialogFooter>
               <DialogClose asChild>
                 <Button variant="outline" onClick={() => setItemEditando(null)}>
