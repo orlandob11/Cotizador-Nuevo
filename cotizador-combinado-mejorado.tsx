@@ -1348,48 +1348,64 @@ export default function CotizadorCombinadoMejorado({
 
   // Modifica las funciones de exportación
   const exportarPDF = async () => {
-    setExportandoPDF(true)
-    try {
-      const cotizacionData = {
-        nombreProyecto,
-        clienteNombre,
-        items,
-        margenGanancia,
-        porcentajeComision,
-        precioFinal: precioFinal.valor || 0,
-        nota,
-      }
-
-      const response = await fetch('/api/generar-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(cotizacionData),
-      })
-
-      if (!response.ok) throw new Error('Error al generar PDF')
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${nombreProyecto || 'cotizacion'}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch (error) {
-      console.error('Error al exportar PDF:', error)
-      setNotificacion({
-        visible: true,
-        exito: false,
-        mensaje: 'Error al exportar PDF',
-      })
-    } finally {
-      setExportandoPDF(false)
+  setExportandoPDF(true)
+  try {
+    const cotizacionData = {
+      nombreProyecto,
+      clienteNombre,
+      items: items.map(item => ({
+        ...item,
+        precioUnitario: {
+          ...item.precioUnitario,
+          valor: Number(item.precioUnitario.valor)
+        }
+      })),
+      margenGanancia,
+      porcentajeComision,
+      precioFinal: precioFinal.valor || 0,
+      costoTotal: calcularCostoTotal(),
+      precioVentaTotal: calcularPrecioVentaTotal(),
+      nota,
     }
+
+    const response = await fetch('/api/generar-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(cotizacionData),
+    })
+
+    if (!response.ok) {
+      throw new Error('Error al generar PDF')
+    }
+
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${nombreProyecto || 'cotizacion'}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+
+    setNotificacion({
+      visible: true,
+      exito: true,
+      mensaje: 'PDF generado correctamente'
+    })
+  } catch (error) {
+    console.error('Error al exportar PDF:', error)
+    setNotificacion({
+      visible: true,
+      exito: false,
+      mensaje: 'Error al generar PDF'
+    })
+  } finally {
+    setExportandoPDF(false)
   }
+}
 
   const exportarJSON = () => {
     setExportandoJSON(true)
