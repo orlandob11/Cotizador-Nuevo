@@ -1305,7 +1305,29 @@ export default function CotizadorCombinadoMejorado({
   }
 
   const handleSaveItem = (updatedItem: Item) => {
-    setItems(items.map((item) => (item.id === updatedItem.id ? updatedItem : item)))
+    let itemToSave = { ...updatedItem }
+
+    // Recalcular área si es un ítem de impresión con dimensiones
+    if (itemToSave.esImpresion && itemToSave.extendido) {
+      const { ancho, alto, unidadMedida } = itemToSave.extendido
+      if (ancho !== null && alto !== null) {
+        const areaPiesCuadrados = convertirAPiesCuadrados(ancho, alto, unidadMedida)
+        itemToSave = {
+          ...itemToSave,
+          areaPiesCuadrados,
+        }
+
+        // Si está en modo precio total, actualizar el costo por pie
+        if (itemToSave.modoPrecio === "total" && itemToSave.extendido.costoPorPie !== null) {
+          itemToSave.precioUnitario = {
+            valor: itemToSave.extendido.costoPorPie / areaPiesCuadrados,
+            manual: true
+          }
+        }
+      }
+    }
+
+    setItems(items.map((item) => (item.id === itemToSave.id ? itemToSave : item)))
     setItemEditando(null)
   }
 
@@ -1320,6 +1342,84 @@ export default function CotizadorCombinadoMejorado({
     }
   }
 
+  // Añade estos estados
+  const [exportandoPDF, setExportandoPDF] = useState(false)
+  const [exportandoJSON, setExportandoJSON] = useState(false)
+
+  // Modifica las funciones de exportación
+  const exportarPDF = async () => {
+    setExportandoPDF(true)
+    try {
+      const cotizacionData = {
+        nombreProyecto,
+        clienteNombre,
+        items,
+        margenGanancia,
+        porcentajeComision,
+        precioFinal: precioFinal.valor || 0,
+        nota,
+      }
+
+      const response = await fetch('/api/generar-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cotizacionData),
+      })
+
+      if (!response.ok) throw new Error('Error al generar PDF')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${nombreProyecto || 'cotizacion'}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error al exportar PDF:', error)
+      setNotificacion({
+        visible: true,
+        exito: false,
+        mensaje: 'Error al exportar PDF',
+      })
+    } finally {
+      setExportandoPDF(false)
+    }
+  }
+
+  const exportarJSON = () => {
+    setExportandoJSON(true)
+    try {
+      const cotizacionData = {
+        tipo: "combinado",
+        nombre: nombreProyecto || "Cotización sin nombre",
+        cliente: clienteNombre || undefined,
+        items,
+        margenGanancia,
+        porcentajeComision,
+        precioFinal: precioFinal.valor || 0,
+        nota: nota || undefined,
+      }
+
+      const blob = new Blob([JSON.stringify(cotizacionData, null, 2)], { type: 'application/json' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${nombreProyecto || 'cotizacion'}.json`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } finally {
+      setExportandoJSON(false)
+    }
+  }
+
+  // Actualiza los botones para mostrar el estado de carga
   return (
     <MobileOptimizedContainer className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
       <NotificacionGuardado
@@ -1631,14 +1731,32 @@ export default function CotizadorCombinadoMejorado({
                     <CardDescription>Exporte su cotización en diferentes formatos</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-6">
+                    {/* Reemplaza los botones existentes con estos: */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white">
-                        <Download className="mr-2 h-4 w-4" />
-                        Exportar PDF
+                      <Button
+                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+                        onClick={exportarPDF}
+                        disabled={exportandoPDF}
+                      >
+                        {exportandoPDF ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="mr-2 h-4 w-4" />
+                        )}
+                        {exportandoPDF ? 'Exportando...' : 'Exportar PDF'}
                       </Button>
-                      <Button variant="outline" className="border-gray-300 hover:bg-gray-50">
-                        <Download className="mr-2 h-4 w-4" />
-                        Exportar JSON
+                      <Button
+                        variant="outline"
+                        className="border-gray-300 hover:bg-gray-50"
+                        onClick={exportarJSON}
+                        disabled={exportandoJSON}
+                      >
+                        {exportandoJSON ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="mr-2 h-4 w-4" />
+                        )}
+                        {exportandoJSON ? 'Exportando...' : 'Exportar JSON'}
                       </Button>
                     </div>
                   </CardContent>
@@ -1679,7 +1797,7 @@ export default function CotizadorCombinadoMejorado({
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Costo Total</span>
                       <span className="font-medium">{formatearPrecioDOP(calcularCostoTotal())}</span>
-                    </div>
+                                       </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Precio de Venta</span>
                       <span className="font-medium">{formatearPrecioDOP(calcularPrecioVentaTotal())}</span>
@@ -1689,13 +1807,9 @@ export default function CotizadorCombinadoMejorado({
                       <span className="font-semibold text-blue-600">{formatearPrecioDOP(precioFinal.valor ?? 0)}</span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t">
-                      <span className="font-medium">Ganancia</span>
-                      <span className="font-bold text-green-600">
-                        {formatearPrecioDOP(
-                          (precioFinal.valor ?? 0) -
-                            calcularCostoTotal() -
-                            ((precioFinal.valor ?? 0) * porcentajeComision) / 100,
-                        )}
+                      <span className="text-sm text-gray-600">Margen de Ganancia</span>
+                      <span className="font-medium">
+                        {margenGanancia.toFixed(1)}%
                       </span>
                     </div>
                   </div>
@@ -1755,7 +1869,7 @@ export default function CotizadorCombinadoMejorado({
                     required
                   />
                 </div>
-                
+
                 {/* Precio Unitario */}
                 <div className="space-y-2">
                   <Label htmlFor="precioUnitario" className="text-sm font-medium">
