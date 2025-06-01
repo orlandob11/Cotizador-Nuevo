@@ -966,12 +966,22 @@ const ResumenMejorado = ({
     return (item.precioUnitario.valor ?? 0) * item.cantidad
   }
 
-  const itemsVenta = items.filter((item) => item.tipoItem === "venta")
-  const itemsCosto = items.filter((item) => item.tipoItem === "costo")
+  // Dentro del componente ResumenMejorado, actualiza esta parte:
+const itemsVenta = items.filter((item) => item.tipoItem === "venta")
+const itemsCosto = items.filter((item) => item.tipoItem === "costo")
 
-  const costoTotalVenta = itemsVenta.reduce((total, item) => total + calcularCostoItem(item), 0)
-  const costoTotalCostos = itemsCosto.reduce((total, item) => total + calcularCostoItem(item), 0)
-  const costoTotal = costoTotalVenta + costoTotalCostos
+const costoTotalVenta = itemsVenta.reduce((total, item) => total + calcularCostoItem(item), 0)
+const costoTotalCostos = itemsCosto.reduce((total, item) => total + calcularCostoItem(item), 0)
+const costoTotal = costoTotalVenta + costoTotalCostos
+const costoTotalReal = items.reduce((total, item) => {
+  // Si el item tiene costo real definido
+  if (item.costoReal !== undefined && item.costoReal !== null) {
+    return total + (item.costoReal * item.cantidad)
+  }
+  // Si no tiene costo real, usar el costo calculado
+  return total + calcularCostoItem(item)
+}, 0)
+
 
   const precioVentaTotal = itemsVenta.reduce((total, item) => total + calcularPrecioItem(item), 0)
   const comision = ((precioFinal.valor ?? precioVentaTotal) * porcentajeComision) / 100
@@ -1013,6 +1023,11 @@ const ResumenMejorado = ({
                     <span className="text-sm text-yellow-700">Comisión ({porcentajeComision}%)</span>
                     <span className="font-medium text-yellow-800">{formatearPrecioDOP(comision)}</span>
                   </div>
+
+                <div className="flex justify-between items-center p-2 bg-purple-50 rounded">
+                  <span className="text-sm text-purple-700">Costo Real Total</span>
+                  <span className="font-medium text-purple-800">{formatearPrecioDOP(costoTotalReal)}</span>
+                </div>
                 </div>
               </div>
 
@@ -1178,6 +1193,28 @@ export default function CotizadorCombinadoMejorado({
   const calcularCostoTotal = () => {
     return items.reduce((total, item) => total + calcularCostoItem(item), 0)
   }
+
+  // Agregar esta función junto a las otras funciones de cálculo
+const calcularCostoRealTotal = (): number => {
+  return items.reduce((total, item) => {
+    // Si el item tiene costo real definido, usarlo
+    if (item.costoReal !== undefined && item.costoReal !== null) {
+      return total + (item.costoReal * item.cantidad)
+    }
+
+    // Si no tiene costo real, usar el costo calculado
+    if (item.mostrarExtendido && item.extendido) {
+      const { ancho, alto, unidadMedida } = item.extendido
+      if (ancho !== null && alto !== null && item.precioUnitario.valor !== null) {
+        const areaPiesCuadrados = convertirAPiesCuadrados(ancho, alto, unidadMedida)
+        return total + (areaPiesCuadrados * item.precioUnitario.valor * item.cantidad)
+      }
+    }
+
+    // Si no hay datos extendidos, usar el precio unitario
+    return total + ((item.precioUnitario.valor ?? 0) * item.cantidad)
+  }, 0)
+}
 
   const calcularPrecioVentaTotal = () => {
     return items
@@ -1928,7 +1965,48 @@ export default function CotizadorCombinadoMejorado({
                     </SelectContent>
                   </Select>
                 </div>
-
+                {/* Tipo de Ítem */}
+                <div className="space-y-2">
+                <Label htmlFor="tipoItem" className="text-sm font-medium">
+                    Tipo de Ítem
+                </Label>
+                <Select
+                    value={itemEditando.tipoItem}
+                    onValueChange={(value: "venta" | "costo") =>
+                    setItemEditando((prev) => ({ ...prev, tipoItem: value }))
+                    }
+                >
+                    <SelectTrigger
+                    id="tipoItem"
+                    className={`border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${
+                        itemEditando.tipoItem === "venta"
+                        ? "text-green-600"
+                        : "text-orange-600"
+                    }`}
+                    >
+                    <SelectValue placeholder="Seleccione el tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    <SelectItem value="venta">
+                        <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span>Ítem de Venta</span>
+                        </div>
+                    </SelectItem>
+                    <SelectItem value="costo">
+                        <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-500" />
+                        <span>Ítem de Costo</span>
+                        </div>
+                    </SelectItem>
+                    </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                    {itemEditando.tipoItem === "venta"
+                    ? "Los ítems de venta contribuyen al precio final"
+                    : "Los ítems de costo se deducen de la ganancia"}
+                </p>
+                </div>
                 {/* Costo Real */}
                 <div className="space-y-2">
                   <Label htmlFor="costoReal" className="text-sm font-medium">
